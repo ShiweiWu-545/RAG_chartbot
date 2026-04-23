@@ -1,6 +1,7 @@
 """
 Integration tests for the query flow across AIGenerator, RAGSystem, and the API layer.
 """
+
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -8,9 +9,8 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-from fastapi.testclient import TestClient
-
 from ai_generator import AIGenerator
+from fastapi.testclient import TestClient
 from rag_system import RAGSystem
 
 
@@ -65,19 +65,19 @@ class TestQueryFlowIntegration:
         return config
 
     def test_rag_system_multi_round_query_supports_follow_up_search(self, mock_config):
-        with patch("ai_generator.OpenAI") as mock_openai, \
-             patch("rag_system.DocumentProcessor"), \
-             patch("rag_system.VectorStore") as mock_vector_store_cls, \
-             patch("rag_system.SessionManager") as mock_session_manager_cls, \
-             patch("rag_system.AIGenerator") as mock_ai_generator_cls:
+        with (
+            patch("ai_generator.OpenAI") as mock_openai,
+            patch("rag_system.DocumentProcessor"),
+            patch("rag_system.VectorStore") as mock_vector_store_cls,
+            patch("rag_system.SessionManager") as mock_session_manager_cls,
+            patch("rag_system.AIGenerator") as mock_ai_generator_cls,
+        ):
 
             mock_client = MagicMock()
             mock_openai.return_value = mock_client
 
             real_ai = AIGenerator(
-                api_key="test_key",
-                model="test-model",
-                base_url="https://test.api"
+                api_key="test_key", model="test-model", base_url="https://test.api"
             )
             real_ai.client = mock_client
             mock_ai_generator_cls.return_value = real_ai
@@ -89,13 +89,13 @@ class TestQueryFlowIntegration:
                     return SearchResults(
                         documents=["Lesson 5 title: MCP workflows"],
                         metadata=[{"course_title": "Course X", "lesson_number": 5}],
-                        distances=[0.1]
+                        distances=[0.1],
                     )
                 if query == "MCP workflows":
                     return SearchResults(
                         documents=["Course Y explains MCP workflows in depth."],
                         metadata=[{"course_title": "Course Y", "lesson_number": 1}],
-                        distances=[0.2]
+                        distances=[0.2],
                     )
                 return SearchResults.empty("No results")
 
@@ -111,18 +111,18 @@ class TestQueryFlowIntegration:
             mock_client.chat.completions.create.side_effect = [
                 make_response(
                     "I will check the lesson title first.",
-                    [make_tool_call("call_1", "course outline for course X")]
+                    [make_tool_call("call_1", "course outline for course X")],
                 ),
                 make_response(
                     "I found the lesson title, now I will search for a matching course.",
-                    [make_tool_call("call_2", "MCP workflows")]
+                    [make_tool_call("call_2", "MCP workflows")],
                 ),
-                make_response("Course Y explains the same topic as lesson 5 of course X.")
+                make_response("Course Y explains the same topic as lesson 5 of course X."),
             ]
 
             answer, sources = rag.query(
                 "Is there any other course topic with the same theme as MCP course lesson 5?",
-                session_id="session_1"
+                session_id="session_1",
             )
 
             assert answer == "Course Y explains the same topic as lesson 5 of course X."

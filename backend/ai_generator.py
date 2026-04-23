@@ -1,9 +1,9 @@
 import json
 import logging
+from typing import Any, Dict, List, Optional
+
 import httpx
 from openai import OpenAI
-from typing import List, Optional, Dict, Any
-
 
 logger = logging.getLogger(__name__)
 
@@ -40,22 +40,19 @@ Provide only the direct answer to what was asked.
 
     def __init__(self, api_key: str, model: str, base_url: str):
         self.client = OpenAI(
-            api_key=api_key,
-            base_url=base_url,
-            http_client=httpx.Client(trust_env=False)
+            api_key=api_key, base_url=base_url, http_client=httpx.Client(trust_env=False)
         )
         self.model = model
 
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
 
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
 
@@ -71,11 +68,13 @@ Provide only the direct answer to what was asked.
 
         system_content = self.SYSTEM_PROMPT
         if conversation_history:
-            system_content = f"{self.SYSTEM_PROMPT}\n\nPrevious conversation:\n{conversation_history}"
+            system_content = (
+                f"{self.SYSTEM_PROMPT}\n\nPrevious conversation:\n{conversation_history}"
+            )
 
         messages = [
             {"role": "system", "content": system_content},
-            {"role": "user", "content": query}
+            {"role": "user", "content": query},
         ]
 
         response = self._create_completion(messages, tools)
@@ -101,34 +100,29 @@ Provide only the direct answer to what was asked.
                     tool_call.function.name,
                 )
 
-            messages.append(self._build_assistant_tool_message(choice.message.content or "", tool_call))
+            messages.append(
+                self._build_assistant_tool_message(choice.message.content or "", tool_call)
+            )
 
             try:
                 allowed_args = None
                 if hasattr(tool_manager, "get_tool_allowed_arguments"):
                     allowed_args = tool_manager.get_tool_allowed_arguments(tool_call.function.name)
                 tool_args = self._parse_tool_arguments(
-                    tool_call.function.name,
-                    tool_call.function.arguments,
-                    allowed_args
+                    tool_call.function.name, tool_call.function.arguments, allowed_args
                 )
-                result = tool_manager.execute_tool(
-                    tool_call.function.name,
-                    **tool_args
-                )
+                result = tool_manager.execute_tool(tool_call.function.name, **tool_args)
             except Exception as exc:
                 logger.exception("Tool execution raised for %s", tool_call.function.name)
                 return f"Tool execution failed: {exc}"
 
             result_text = str(result)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": result_text
-            })
+            messages.append({"role": "tool", "tool_call_id": tool_call.id, "content": result_text})
 
             if self._is_tool_failure(result_text):
-                logger.warning("Tool execution failed for %s: %s", tool_call.function.name, result_text)
+                logger.warning(
+                    "Tool execution failed for %s: %s", tool_call.function.name, result_text
+                )
                 return result_text
 
             tool_rounds += 1
@@ -137,10 +131,7 @@ Provide only the direct answer to what was asked.
         return response.choices[0].message.content or ""
 
     def _create_completion(self, messages: List[Dict[str, Any]], tools: Optional[List] = None):
-        api_params = {
-            **self.base_params,
-            "messages": messages
-        }
+        api_params = {**self.base_params, "messages": messages}
 
         if tools:
             api_params["tools"] = tools
@@ -152,14 +143,16 @@ Provide only the direct answer to what was asked.
         return {
             "role": "assistant",
             "content": content or "",
-            "tool_calls": [{
-                "id": tool_call.id,
-                "type": "function",
-                "function": {
-                    "name": tool_call.function.name,
-                    "arguments": tool_call.function.arguments
+            "tool_calls": [
+                {
+                    "id": tool_call.id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.function.name,
+                        "arguments": tool_call.function.arguments,
+                    },
                 }
-            }]
+            ],
         }
 
     def _extract_tool_calls(self, message) -> List[Any]:
@@ -173,18 +166,11 @@ Provide only the direct answer to what was asked.
         return [tool_calls]
 
     def _is_tool_failure(self, result_text: str) -> bool:
-        failure_prefixes = (
-            "Tool execution failed:",
-            "Tool '",
-            "Search error:"
-        )
+        failure_prefixes = ("Tool execution failed:", "Tool '", "Search error:")
         return isinstance(result_text, str) and result_text.startswith(failure_prefixes)
 
     def _parse_tool_arguments(
-        self,
-        tool_name: str,
-        raw_arguments: Optional[str],
-        allowed_args: Optional[set[str]] = None
+        self, tool_name: str, raw_arguments: Optional[str], allowed_args: Optional[set[str]] = None
     ) -> Dict[str, Any]:
         """Parse OpenAI-compatible JSON tool arguments and drop unknown fields."""
         try:
@@ -194,7 +180,9 @@ Provide only the direct answer to what was asked.
             raise ValueError(f"Invalid tool arguments for '{tool_name}'") from exc
 
         if not isinstance(parsed_args, dict):
-            logger.warning("Tool arguments for %s must be a JSON object: %r", tool_name, parsed_args)
+            logger.warning(
+                "Tool arguments for %s must be a JSON object: %r", tool_name, parsed_args
+            )
             raise ValueError(f"Invalid tool arguments for '{tool_name}'")
 
         if allowed_args is not None:

@@ -1,8 +1,9 @@
 """
 Tests for VectorStore embedding initialization and offline fallback behavior.
 """
-import sys
+
 import os
+import sys
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -38,11 +39,13 @@ class TestVectorStoreEmbeddingInitialization:
         mock_collection = MagicMock()
         mock_client.get_or_create_collection.return_value = mock_collection
 
-        with patch("vector_store.chromadb.PersistentClient", return_value=mock_client), \
-             patch(
-                 "vector_store.chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction",
-                 side_effect=RuntimeError("offline")
-             ):
+        with (
+            patch("vector_store.chromadb.PersistentClient", return_value=mock_client),
+            patch(
+                "vector_store.chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction",
+                side_effect=RuntimeError("offline"),
+            ),
+        ):
             store = VectorStore("./test_chroma_db", "all-MiniLM-L6-v2")
 
         assert isinstance(store.embedding_function, LocalHashEmbeddingFunction)

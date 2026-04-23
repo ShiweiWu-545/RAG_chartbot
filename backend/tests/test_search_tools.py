@@ -2,19 +2,21 @@
 Tests for Search Tools - ToolManager.execute_tool() and CourseSearchTool
 File: backend/search_tools.py:138-143
 """
-import sys
+
 import os
+import sys
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-from search_tools import ToolManager, CourseSearchTool
+from search_tools import CourseSearchTool, ToolManager
 
 
 # Define SearchResults locally
 class SearchResults:
     """Mock SearchResults class for testing"""
+
     def __init__(self, documents=None, metadata=None, distances=None, error=None):
         self.documents = documents or []
         self.metadata = metadata or []
@@ -24,9 +26,9 @@ class SearchResults:
     @classmethod
     def from_chroma(cls, chroma_results):
         return cls(
-            documents=chroma_results.get('documents', [[]])[0],
-            metadata=chroma_results.get('metadatas', [[]])[0],
-            distances=chroma_results.get('distances', [[]])[0]
+            documents=chroma_results.get("documents", [[]])[0],
+            metadata=chroma_results.get("metadatas", [[]])[0],
+            distances=chroma_results.get("distances", [[]])[0],
         )
 
     @classmethod
@@ -39,19 +41,20 @@ class SearchResults:
 
 class MockVectorStore:
     """Mock VectorStore for testing"""
+
     def __init__(self):
         self.last_search_kwargs = None
         self.search_results = SearchResults(
             documents=["Test content"],
             metadata=[{"course_title": "Test", "lesson_number": 1}],
-            distances=[0.1]
+            distances=[0.1],
         )
 
     def search(self, query, course_name=None, lesson_number=None):
         self.last_search_kwargs = {
             "query": query,
             "course_name": course_name,
-            "lesson_number": lesson_number
+            "lesson_number": lesson_number,
         }
         return self.search_results
 
@@ -70,10 +73,7 @@ class TestToolManager:
         tool = MagicMock()
         tool.get_tool_definition.return_value = {
             "type": "function",
-            "function": {
-                "name": "test_tool",
-                "description": "A test tool"
-            }
+            "function": {"name": "test_tool", "description": "A test tool"},
         }
         tool.execute.return_value = "Tool executed successfully"
         return tool
@@ -113,10 +113,7 @@ class TestToolManager:
         """Test: Verify allowed tool arguments are derived from the tool definition"""
         mock_tool.get_tool_definition.return_value["function"]["parameters"] = {
             "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "course_name": {"type": "string"}
-            }
+            "properties": {"query": {"type": "string"}, "course_name": {"type": "string"}},
         }
         tool_manager.register_tool(mock_tool)
 
@@ -185,15 +182,12 @@ class TestCourseSearchTool:
         File: backend/search_tools.py:55-89
         """
         mock_results = SearchResults(
-            documents=[
-                "Python is a programming language.",
-                "It supports multiple paradigms."
-            ],
+            documents=["Python is a programming language.", "It supports multiple paradigms."],
             metadata=[
                 {"course_title": "Python Basics", "lesson_number": 1, "chunk_index": 0},
-                {"course_title": "Python Basics", "lesson_number": 2, "chunk_index": 0}
+                {"course_title": "Python Basics", "lesson_number": 2, "chunk_index": 0},
             ],
-            distances=[0.1, 0.2]
+            distances=[0.1, 0.2],
         )
         mock_vector_store.search_results = mock_results
 
@@ -232,7 +226,11 @@ class TestCourseSearchTool:
         Test: When course_name is provided, verify it's passed to search
         File: backend/search_tools.py:55-89
         """
-        mock_results = SearchResults(documents=["Content"], metadata=[{"course_title": "Test", "lesson_number": 1}], distances=[0.1])
+        mock_results = SearchResults(
+            documents=["Content"],
+            metadata=[{"course_title": "Test", "lesson_number": 1}],
+            distances=[0.1],
+        )
         mock_vector_store.search_results = mock_results
 
         course_search_tool.execute(query="content", course_name="Test Course")
@@ -240,7 +238,7 @@ class TestCourseSearchTool:
         assert mock_vector_store.last_search_kwargs == {
             "query": "content",
             "course_name": "Test Course",
-            "lesson_number": None
+            "lesson_number": None,
         }
 
     def test_execute_with_lesson_number_filter(self, course_search_tool, mock_vector_store):
@@ -248,7 +246,11 @@ class TestCourseSearchTool:
         Test: When lesson_number is provided, verify it's passed to search
         File: backend/search_tools.py:55-89
         """
-        mock_results = SearchResults(documents=["Content"], metadata=[{"course_title": "Test", "lesson_number": 3}], distances=[0.1])
+        mock_results = SearchResults(
+            documents=["Content"],
+            metadata=[{"course_title": "Test", "lesson_number": 3}],
+            distances=[0.1],
+        )
         mock_vector_store.search_results = mock_results
 
         course_search_tool.execute(query="content", lesson_number=3)
@@ -256,7 +258,7 @@ class TestCourseSearchTool:
         assert mock_vector_store.last_search_kwargs == {
             "query": "content",
             "course_name": None,
-            "lesson_number": 3
+            "lesson_number": 3,
         }
 
     def test_sources_are_tracked(self, course_search_tool, mock_vector_store):
@@ -267,7 +269,7 @@ class TestCourseSearchTool:
         mock_results = SearchResults(
             documents=["Content A"],
             metadata=[{"course_title": "Course A", "lesson_number": 1}],
-            distances=[0.1]
+            distances=[0.1],
         )
         mock_vector_store.search_results = mock_results
 

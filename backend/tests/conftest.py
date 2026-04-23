@@ -1,8 +1,9 @@
 """
 Shared fixtures and mocks for testing
 """
-import sys
+
 import os
+import sys
 from unittest.mock import MagicMock, Mock
 
 # Add backend to path
@@ -14,6 +15,7 @@ import pytest
 # Define SearchResults locally to avoid importing vector_store
 class SearchResults:
     """Mock SearchResults class for testing"""
+
     def __init__(self, documents=None, metadata=None, distances=None, error=None):
         self.documents = documents or []
         self.metadata = metadata or []
@@ -23,9 +25,9 @@ class SearchResults:
     @classmethod
     def from_chroma(cls, chroma_results):
         return cls(
-            documents=chroma_results.get('documents', [[]])[0],
-            metadata=chroma_results.get('metadatas', [[]])[0],
-            distances=chroma_results.get('distances', [[]])[0]
+            documents=chroma_results.get("documents", [[]])[0],
+            metadata=chroma_results.get("metadatas", [[]])[0],
+            distances=chroma_results.get("distances", [[]])[0],
         )
 
     @classmethod
@@ -42,13 +44,13 @@ def mock_search_results():
     return SearchResults(
         documents=[
             "This is sample course content about Python programming.",
-            "This is more content about machine learning basics."
+            "This is more content about machine learning basics.",
         ],
         metadata=[
             {"course_title": "Python Basics", "lesson_number": 1, "chunk_index": 0},
-            {"course_title": "ML Introduction", "lesson_number": 2, "chunk_index": 0}
+            {"course_title": "ML Introduction", "lesson_number": 2, "chunk_index": 0},
         ],
-        distances=[0.1, 0.2]
+        distances=[0.1, 0.2],
     )
 
 
@@ -63,7 +65,7 @@ def mock_vector_store(mock_search_results):
 @pytest.fixture
 def tool_manager_with_mock_store(mock_vector_store):
     """Create a ToolManager with a mocked CourseSearchTool"""
-    from search_tools import ToolManager, CourseSearchTool
+    from search_tools import CourseSearchTool, ToolManager
 
     tm = ToolManager()
     search_tool = CourseSearchTool(mock_vector_store)

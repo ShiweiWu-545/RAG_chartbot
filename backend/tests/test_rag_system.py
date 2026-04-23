@@ -2,8 +2,9 @@
 Tests for RAG System query/search orchestration without touching real ChromaDB or model downloads.
 File: backend/rag_system.py
 """
-import sys
+
 import os
+import sys
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,12 +32,14 @@ class TestRAGSystem:
 
     @pytest.fixture
     def rag_and_deps(self, mock_config):
-        with patch("rag_system.DocumentProcessor") as mock_doc_processor_cls, \
-             patch("rag_system.VectorStore") as mock_vector_store_cls, \
-             patch("rag_system.AIGenerator") as mock_ai_generator_cls, \
-             patch("rag_system.SessionManager") as mock_session_manager_cls, \
-             patch("rag_system.ToolManager") as mock_tool_manager_cls, \
-             patch("rag_system.CourseSearchTool") as mock_search_tool_cls:
+        with (
+            patch("rag_system.DocumentProcessor") as mock_doc_processor_cls,
+            patch("rag_system.VectorStore") as mock_vector_store_cls,
+            patch("rag_system.AIGenerator") as mock_ai_generator_cls,
+            patch("rag_system.SessionManager") as mock_session_manager_cls,
+            patch("rag_system.ToolManager") as mock_tool_manager_cls,
+            patch("rag_system.CourseSearchTool") as mock_search_tool_cls,
+        ):
             mock_doc_processor = MagicMock()
             mock_vector_store = MagicMock()
             mock_ai_generator = MagicMock()
@@ -44,7 +47,9 @@ class TestRAGSystem:
             mock_tool_manager = MagicMock()
             mock_search_tool = MagicMock()
 
-            mock_ai_generator.generate_response.return_value = "This is a test response about course materials."
+            mock_ai_generator.generate_response.return_value = (
+                "This is a test response about course materials."
+            )
             mock_session_manager.get_conversation_history.return_value = None
             mock_tool_manager.get_tool_definitions.return_value = [
                 {"type": "function", "function": {"name": "search_course_content"}}
