@@ -1,6 +1,10 @@
+import logging
 from typing import Dict, Any, Optional, Protocol
 from abc import ABC, abstractmethod
 from vector_store import VectorStore, SearchResults
+
+
+logger = logging.getLogger(__name__)
 
 
 class Tool(ABC):
@@ -134,13 +138,27 @@ class ToolManager:
     def get_tool_definitions(self) -> list:
         """Get all tool definitions for OpenAI-compatible tool calling"""
         return [tool.get_tool_definition() for tool in self.tools.values()]
+
+    def get_tool_allowed_arguments(self, tool_name: str) -> Optional[set[str]]:
+        """Return the allowed argument names for a registered tool."""
+        tool = self.tools.get(tool_name)
+        if not tool:
+            return None
+
+        tool_def = tool.get_tool_definition()
+        properties = tool_def.get("function", {}).get("parameters", {}).get("properties", {})
+        return set(properties.keys())
     
     def execute_tool(self, tool_name: str, **kwargs) -> str:
         """Execute a tool by name with given parameters"""
         if tool_name not in self.tools:
             return f"Tool '{tool_name}' not found"
-        
-        return self.tools[tool_name].execute(**kwargs)
+
+        try:
+            return self.tools[tool_name].execute(**kwargs)
+        except Exception as exc:
+            logger.exception("Tool execution failed for %s", tool_name)
+            return f"Tool execution failed: {str(exc)}"
     
     def get_last_sources(self) -> list:
         """Get sources from the last search operation"""

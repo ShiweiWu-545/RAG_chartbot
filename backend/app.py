@@ -1,6 +1,7 @@
 import warnings
 warnings.filterwarnings("ignore", message="resource_tracker: There appear to be.*")
 
+import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -11,6 +12,9 @@ import os
 
 from config import config
 from rag_system import RAGSystem
+
+
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(title="Course Materials RAG System", root_path="")
@@ -71,7 +75,8 @@ async def query_documents(request: QueryRequest):
             session_id=session_id
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Query request failed for session_id=%s", request.session_id)
+        raise HTTPException(status_code=500, detail="Query failed. Please try again.")
 
 @app.get("/api/courses", response_model=CourseStats)
 async def get_course_stats():
@@ -83,7 +88,8 @@ async def get_course_stats():
             course_titles=analytics["course_titles"]
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Course stats request failed")
+        raise HTTPException(status_code=500, detail="Failed to load course stats.")
 
 @app.on_event("startup")
 async def startup_event():
@@ -95,7 +101,7 @@ async def startup_event():
             courses, chunks = rag_system.add_course_folder(docs_path, clear_existing=False)
             print(f"Loaded {courses} courses with {chunks} chunks")
         except Exception as e:
-            print(f"Error loading documents: {e}")
+            logger.exception("Error loading initial documents")
 
 # Custom static file handler with no-cache headers for development
 from fastapi.staticfiles import StaticFiles
@@ -116,4 +122,4 @@ class DevStaticFiles(StaticFiles):
     
     
 # Serve static files for the frontend
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
+app.mount("/", DevStaticFiles(directory="../frontend", html=True), name="static")

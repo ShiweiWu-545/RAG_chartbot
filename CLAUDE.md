@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Preferences
+
+- **依赖安装**：始终使用 `uv add <package>`，禁止使用 `pip install`
+- **运行程序**：始终使用 `uv run python <file>`，禁止使用 `python <file>`
+- **语言要求**：所有文本文档以及回复均以中文书写和交流
+
 ## Project Overview
 
 Course Materials RAG System - a web application that answers questions about course materials using semantic search (ChromaDB) and Claude AI (Anthropic). Users query course documents through a web interface and receive AI-generated answers with sources.

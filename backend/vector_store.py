@@ -1,9 +1,59 @@
-import chromadb
-from chromadb.config import Settings
-from typing import List, Dict, Any, Optional
+import hashlib
+import logging
+import re
 from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
+
+import chromadb
+import numpy as np
+from chromadb.api.types import Documents, Embeddings
+from chromadb.config import Settings
+
 from models import Course, CourseChunk
-from sentence_transformers import SentenceTransformer
+
+
+logger = logging.getLogger(__name__)
+
+
+class LocalHashEmbeddingFunction:
+    """Offline-safe embedding fallback when transformer models cannot be loaded."""
+
+    def __init__(self, dimension: int = 384):
+        self.dimension = dimension
+
+    @staticmethod
+    def name() -> str:
+        return "default"
+
+    @staticmethod
+    def build_from_config(config: Dict[str, Any]) -> "LocalHashEmbeddingFunction":
+        return LocalHashEmbeddingFunction(dimension=config.get("dimension", 384))
+
+    def get_config(self) -> Dict[str, Any]:
+        return {"dimension": self.dimension}
+
+    def __call__(self, input: Documents) -> Embeddings:
+        embeddings = []
+        for document in input:
+            vector = np.zeros(self.dimension, dtype=np.float32)
+            tokens = re.findall(r"\w+", document.lower())
+            if not tokens:
+                embeddings.append(vector)
+                continue
+
+            for token in tokens:
+                digest = hashlib.sha256(token.encode("utf-8")).digest()
+                index = int.from_bytes(digest[:4], "little") % self.dimension
+                sign = 1.0 if digest[4] % 2 == 0 else -1.0
+                weight = 1.0 + (digest[5] / 255.0)
+                vector[index] += sign * weight
+
+            norm = np.linalg.norm(vector)
+            if norm > 0:
+                vector = vector / norm
+            embeddings.append(vector)
+
+        return embeddings
 
 @dataclass
 class SearchResults:
@@ -42,14 +92,25 @@ class VectorStore:
             settings=Settings(anonymized_telemetry=False)
         )
         
-        # Set up sentence transformer embedding function
-        self.embedding_function = chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=embedding_model
-        )
+        # Prefer sentence-transformer embeddings, but fall back to an offline-safe local embedder.
+        self.embedding_function = self._build_embedding_function(embedding_model)
         
         # Create collections for different types of data
         self.course_catalog = self._create_collection("course_catalog")  # Course titles/instructors
         self.course_content = self._create_collection("course_content")  # Actual course material
+
+    def _build_embedding_function(self, embedding_model: str):
+        """Build an embedding function and fall back to a local implementation offline."""
+        try:
+            return chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=embedding_model
+            )
+        except Exception:
+            logger.warning(
+                "Failed to load embedding model '%s'. Falling back to local hash embeddings.",
+                embedding_model
+            )
+            return LocalHashEmbeddingFunction()
     
     def _create_collection(self, name: str):
         """Create or get a ChromaDB collection"""

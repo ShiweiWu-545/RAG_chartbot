@@ -71,7 +71,11 @@ async function sendMessage() {
             })
         });
 
-        if (!response.ok) throw new Error('Query failed');
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Query request failed:', response.status, errorText);
+            throw new Error('Unable to answer that question right now. Please try again.');
+        }
 
         const data = await response.json();
         
@@ -85,6 +89,7 @@ async function sendMessage() {
         addMessage(data.answer, 'assistant', data.sources);
 
     } catch (error) {
+        console.error('Error sending message:', error);
         // Replace loading message with error
         loadingMessage.remove();
         addMessage(`Error: ${error.message}`, 'assistant');
@@ -157,7 +162,11 @@ async function loadCourseStats() {
     try {
         console.log('Loading course stats...');
         const response = await fetch(`${API_URL}/courses`);
-        if (!response.ok) throw new Error('Failed to load course stats');
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Course stats request failed:', response.status, errorText);
+            throw new Error('Failed to load course stats');
+        }
         
         const data = await response.json();
         console.log('Course data received:', data);
