@@ -16,8 +16,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black>=24.0.0",
-    "isort>=5.13.0",
+    "black>=26.3.1",
+    "isort>=8.0.1",
+    "pytest>=8.0.0",
 ]
 
 [tool.black]
@@ -46,6 +47,8 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 asyncio_mode = "auto"
+addopts = "-v --tb=short"
+filterwarnings = ["ignore::DeprecationWarning"]
 
 [dependency-groups]
 dev = [
