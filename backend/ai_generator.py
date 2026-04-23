@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -137,7 +138,27 @@ Provide only the direct answer to what was asked.
             api_params["tools"] = tools
             api_params["tool_choice"] = {"type": "auto"}
 
-        return self.client.chat.completions.create(**api_params)
+        max_retries = 3
+        last_error = None
+
+        for attempt in range(max_retries):
+            try:
+                return self.client.chat.completions.create(**api_params)
+            except Exception as exc:
+                last_error = exc
+                # Check if it's an overloaded error (529)
+                if hasattr(exc, "status_code") and exc.status_code == 529:
+                    if attempt < max_retries - 1:
+                        wait_time = 2 ** attempt
+                        logger.warning(
+                            "MiniMax API overloaded (529), retrying in %ds (attempt %d/%d)",
+                            wait_time, attempt + 1, max_retries
+                        )
+                        time.sleep(wait_time)
+                        continue
+                raise
+
+        raise last_error
 
     def _build_assistant_tool_message(self, content: str, tool_call) -> Dict[str, Any]:
         return {
