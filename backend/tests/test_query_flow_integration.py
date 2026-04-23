@@ -50,20 +50,6 @@ def make_response(content, tool_calls=None):
 
 
 class TestQueryFlowIntegration:
-    @pytest.fixture
-    def mock_config(self):
-        config = MagicMock()
-        config.MINIMAX_API_KEY = "test_key"
-        config.MINIMAX_MODEL = "test-model"
-        config.MINIMAX_BASE_URL = "https://test.api"
-        config.EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-        config.CHUNK_SIZE = 800
-        config.CHUNK_OVERLAP = 100
-        config.MAX_RESULTS = 5
-        config.MAX_HISTORY = 2
-        config.CHROMA_PATH = "./test_chroma_db"
-        return config
-
     def test_rag_system_multi_round_query_supports_follow_up_search(self, mock_config):
         with patch("ai_generator.OpenAI") as mock_openai, \
              patch("rag_system.DocumentProcessor"), \
