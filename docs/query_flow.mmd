@@ -1,0 +1,70 @@
+flowchart TD
+    subgraph Frontend["🌐 前端 (frontend/)"]
+        A1[用户输入问题] --> A2[sendMessage()]
+        A2 --> A3[fetch POST /api/query]
+        A3 --> A4[显示加载动画]
+        A4 --> A5[收到响应后替换为答案]
+    end
+
+    subgraph Backend_API["⚡ FastAPI (app.py)"]
+        B1[/POST /api/query\] --> B2[QueryRequest验证]
+        B2 --> B3[获取或创建session_id]
+        B3 --> B4[rag_system.query]
+    end
+
+    subgraph RAGSystem["🎯 RAGSystem 编排 (rag_system.py)"]
+        C1[query方法] --> C2[获取对话历史]
+        C2 --> C3[ai_generator.generate_response<br/>传入tools和tool_manager]
+    end
+
+    subgraph AIGenerator["🤖 AIGenerator (ai_generator.py)"]
+        D1[generate_response] --> D2[构建System Prompt]
+        D2 --> D3[client.messages.create<br/>第一次Claude调用]
+        D3 --> D4{stop_reason<br/>== tool_use?}
+        D4 -->|是| D5[_handle_tool_execution]
+        D4 -->|否| D10[直接返回答案]
+        D5 --> D6[ToolManager.execute_tool]
+    end
+
+    subgraph ToolManager["🔧 ToolManager (search_tools.py)"]
+        E1[execute_tool<br/>search_course_content] --> E2[CourseSearchTool.execute]
+    end
+
+    subgraph VectorStore["📦 VectorStore (vector_store.py)"]
+        F1[search方法] --> F2[_resolve_course_name<br/>模糊匹配课程名]
+        F2 --> F3[_build_filter<br/>构建ChromaDB过滤条件]
+        F3 --> F4[course_content.query<br/>向量相似度搜索]
+        F4 --> F5[返回SearchResults]
+    end
+
+    subgraph ChromaDB["💾 ChromaDB"]
+        G1[course_catalog<br/>集合] --> G3[课程目录向量]
+        G2[course_content<br/>集合] --> G4[课程内容向量]
+    end
+
+    A3 -->|HTTP POST| B1
+    B4 --> C1
+    C3 --> D1
+    D6 --> E1
+    E2 --> F1
+    F4 -->|查询| G2
+    F2 -->|查询| G1
+
+    F5 -->|搜索结果| E2
+    E2 -->|格式化结果| D5
+    D5 -->|tool_result| D3
+    D3 --> D7{stop_reason<br/>== tool_use?}
+    D7 -->|否| D8[返回最终答案]
+    D8 --> C1
+    C1 -->|answer, sources| B1
+
+    B1 -->|QueryResponse<br/>JSON| A5
+    A5 --> A6[显示答案 + Sources]
+
+    style A1 fill:#e1f5fe
+    style B1 fill:#fff3e0
+    style C1 fill:#f3e5f5
+    style D1 fill:#e8f5e9
+    style F1 fill:#fce4ec
+    style G1 fill:#f5f5f5,stroke:#ccc
+    style G2 fill:#f5f5f5,stroke:#ccc
